@@ -29,7 +29,7 @@ import tempfile
 
 
 # SGDK image to compile the ROM.
-SGDK_DOCKER_IMAGE='ghcr.io/joeyparrish/sgdk'
+SGDK_DOCKER_IMAGE='ghcr.io/stephane-d/sgdk:latest'
 
 # The double curly braces are escaped for Python string formatting.
 SLIDES_H_TEMPLATE = '''
