@@ -25,7 +25,11 @@ packages "python3", "imagemagick", "poppler-utils", and "docker.io".
 ```
 sudo apt -y install python3 imagemagick poppler-utils docker.io
 
+# All pages
 ./generate.py slides.pdf slides.rom
+
+# A subset of pages (1-based page numbers)
+./generate.py slides.pdf@1-21 slides.rom
 ```
 
 

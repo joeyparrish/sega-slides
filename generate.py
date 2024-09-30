@@ -22,6 +22,7 @@ ROM using SGDK.  On Ubuntu, install packages "python3", "imagemagick",
 
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -48,7 +49,18 @@ const int num_slides = {num_slides};
 '''
 
 
-def main(pdf_path, rom_path):
+def main(pdf_spec, rom_path):
+  # Optional: path_to_pdf@start_page-end_page
+  match = re.match(r'(.*)@(\d+)-(\d+)', pdf_spec)
+  if match:
+    pdf_path = match.group(1)
+    start_page = int(match.group(2))
+    end_page = int(match.group(3))
+  else:
+    pdf_path = pdf_spec
+    start_page = 1
+    end_page = None
+
   with tempfile.TemporaryDirectory(prefix='sega-slides-') as tmp_dir:
     pages_dir = os.path.join(tmp_dir, 'pages')
     os.mkdir(pages_dir)
@@ -59,7 +71,7 @@ def main(pdf_path, rom_path):
     os.mkdir(os.path.join(app_dir, 'res'))
 
     print('Processing slides into Sega-compatible image resources...')
-    process_slides(pdf_path, pages_dir, app_dir)
+    process_slides(pdf_path, pages_dir, start_page, end_page, app_dir)
     print('Bootstrapping slide view source code...')
     copy_sources(app_dir)
     print('Compiling final ROM...')
@@ -70,7 +82,7 @@ def main(pdf_path, rom_path):
     subprocess.run(args=['ls', '-sh', rom_path])
 
 
-def process_slides(pdf_path, pages_dir, app_dir):
+def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
   # Split the PDF into one PNG image per page.
   subprocess.run(check=True, args=[
     'pdftoppm',
@@ -79,53 +91,69 @@ def process_slides(pdf_path, pages_dir, app_dir):
     # Input file in PDF format.
     pdf_path,
     # Output prefix starting with the pages directory.  The tool will create a
-    # series of files by appending a suffix like "-13.png", etc.
+    # series of files by appending a suffix like "-13.png", etc.  The tool will
+    # zero-pad the numbers to the necessary number of digits based on the total
+    # number of pages.  Its numbers are 1-based.
     os.path.join(pages_dir, 'page'),
   ])
 
   # Process those pages by downscaling and reducing colors.
-  num_slides = 0
   resource_list = []
   image_pointers = []
   page_paths = sorted(glob.glob(os.path.join(pages_dir, 'page-*.png')))
+
+  page_num = 1
+  if end_page is None:
+    total_pages = len(page_paths)
+  else:
+    total_pages = end_page - start_page + 1
+
   for page_path in page_paths:
     page_filename = os.path.basename(page_path)
     output_path = os.path.join(app_dir, 'res', page_filename)
-    num_slides += 1
 
-    subprocess.run(check=True, args=[
-      'convert',
-      # Input PNG.
-      page_path,
-      # Scale down to Sega resolution.  Will fit to the frame and will
-      # respect aspect ratio by default.
-      '-scale', '320x224',
-      # Then pad it out to exactly 320x224.  If the output isn't a multiple of
-      # 8 in each dimension, it won't work as an image resource.
-      '-background', 'black',
-      '-gravity', 'center',
-      '-extent', '320x224',
-      # Reduce to 15 colors (the max you can do in one palette on Sega)
-      # without dithering.
-      '+dither', '-colors', '15',
-      # Output a PNG image with an 8-bit palette.
-      'PNG8:{}'.format(output_path),
-    ])
+    if page_num < start_page:
+      pass
+    elif end_page is not None and page_num > end_page:
+      pass
+    else:
+      subprocess.run(check=True, args=[
+        'convert',
+        # Input PNG.
+        page_path,
+        # Scale down to Sega resolution.  Will fit to the frame and will
+        # respect aspect ratio by default.
+        '-scale', '320x224',
+        # Then pad it out to exactly 320x224.  If the output isn't a multiple of
+        # 8 in each dimension, it won't work as an image resource.
+        '-background', 'black',
+        '-gravity', 'center',
+        '-extent', '320x224',
+        # Reduce to 15 colors (the max you can do in one palette on Sega)
+        # without dithering.
+        '+dither', '-colors', '15',
+        # Output a PNG image with an 8-bit palette.
+        'PNG8:{}'.format(output_path),
+      ])
 
-    resource_list.append(
-        'IMAGE slide_{num_slides} {page_filename} BEST'.format(
-            num_slides=num_slides, page_filename=page_filename))
-    image_pointers.append(
-        '  &slide_{num_slides},'.format(
-            num_slides=num_slides))
+      resource_list.append(
+          'IMAGE slide_{page_num} {page_filename} BEST'.format(
+              page_num=page_num, page_filename=page_filename))
+      image_pointers.append(
+          '  &slide_{page_num},'.format(
+              page_num=page_num))
 
-    print('\rProcessed {} / {}... '.format(num_slides, len(page_paths)), end='')
+      print('\rProcessed {} / {}... '.format(
+          len(image_pointers), total_pages), end='')
+
+    page_num += 1
 
   print('')
 
   with open(os.path.join(app_dir, 'src', 'slides.h'), 'w') as f:
     f.write(SLIDES_H_TEMPLATE.format(
-        image_pointers='\n'.join(image_pointers), num_slides=num_slides))
+        image_pointers='\n'.join(image_pointers),
+        num_slides=len(image_pointers)))
 
   with open(os.path.join(app_dir, 'res', 'slide_data.res'), 'w') as f:
     f.write('\n'.join(resource_list) + '\n')
@@ -166,6 +194,8 @@ def compile_rom(app_dir, rom_path):
 if __name__ == '__main__':
   if len(sys.argv) != 3:
     print('Usage: {} <PDF> <ROM.BIN>'.format(sys.argv[0]))
+    print('Advanced usage: {} <PDF>@<PAGE>-<PAGE> <ROM.BIN>'.format(
+        sys.argv[0]))
     print(__doc__)
     sys.exit(1)
 
