@@ -33,6 +33,26 @@ sudo apt -y install python3 imagemagick poppler-utils docker.io
 ```
 
 
+## Windows
+
+To use this from Windows, you can install dependencies via chocolatey:
+
+```ps1
+choco install -y imagemagick docker docker-desktop
+
+# Possibly needed to update Windows Subsystem for Linux to support Docker:
+wsl --update
+
+# The latest Poppler package on Chocolatey (25.7.0) is broken, and only
+# contains sources, not executables.  Pin to an older version.
+choco install -y poppler --version 0.89.0
+```
+
+Finally, you will have to run Docker Desktop once to configure it and start the
+service.  Docker Desktop may or may not require you to reboot if it is newly
+installed.  After that, you should be able to run this tool on Windows.
+
+
 ## Links
 
  - [SGDK](https://github.com/Stephane-D/SGDK): A free and open development kit
