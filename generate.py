@@ -48,6 +48,14 @@ const int num_slides = {num_slides};
 #endif // _RES_SLIDES_H_
 '''
 
+# The more modern imagemagick convert command, which may not be available.
+IMAGEMAGICK_CONVERT_BINARY = 'magick'
+try:
+  subprocess.run(check=True, args=['magick', '-version'])
+except:
+  # Fallback for the older version of the imagemagick convert command.
+  IMAGEMAGICK_CONVERT_BINARY = 'convert'
+
 
 def main(pdf_spec, rom_path):
   # Optional: path_to_pdf@start_page-end_page
@@ -129,7 +137,7 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
       pass
     else:
       subprocess.run(check=True, args=[
-        'magick',
+        IMAGEMAGICK_CONVERT_BINARY,
         # Input PNG.
         page_path,
         # Scale down to Sega resolution.  Will fit to the frame and will
