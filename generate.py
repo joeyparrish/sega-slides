@@ -51,7 +51,8 @@ const int num_slides = {num_slides};
 # The more modern imagemagick convert command, which may not be available.
 IMAGEMAGICK_CONVERT_BINARY = 'magick'
 try:
-  subprocess.run(check=True, args=['magick', '-version'])
+  subprocess.run(check=True, args=['magick', '-version'],
+                 stdout=subprocess.DEVNULL)
 except:
   # Fallback for the older version of the imagemagick convert command.
   IMAGEMAGICK_CONVERT_BINARY = 'convert'
