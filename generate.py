@@ -62,6 +62,16 @@ def main(pdf_spec, rom_path):
     end_page = None
 
   with tempfile.TemporaryDirectory(prefix='sega-slides-') as tmp_dir:
+    if sys.platform == 'win32':
+      # Fix ACLs to make sure Docker can write to this folder later.
+      # This only seems to be needed on Windows.
+      parent_dir = os.path.dirname(tmp_dir)
+      subprocess.run(check=True, args=[
+        'powershell',
+        '-Command',
+        'Get-Acl {} | Set-Acl {}'.format(parent_dir, tmp_dir),
+      ])
+
     pages_dir = os.path.join(tmp_dir, 'pages')
     os.mkdir(pages_dir)
 
@@ -79,7 +89,8 @@ def main(pdf_spec, rom_path):
     compile_rom(app_dir, rom_path)
     print('')
     print('ROM compiled.')
-    subprocess.run(args=['ls', '-sh', rom_path])
+    if sys.platform != 'win32':
+      subprocess.run(args=['ls', '-sh', rom_path])
 
 
 def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
@@ -118,7 +129,7 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
       pass
     else:
       subprocess.run(check=True, args=[
-        'convert',
+        'magick',
         # Input PNG.
         page_path,
         # Scale down to Sega resolution.  Will fit to the frame and will
@@ -170,18 +181,29 @@ def compile_rom(app_dir, rom_path):
     'docker', 'pull', SGDK_DOCKER_IMAGE,
   ])
 
-  subprocess.run(check=True, args=[
+  args = [
     # Run the image.
     'docker', 'run',
     # Remove the container when done.
     '--rm',
     # Mount the source directory into the container.
     '-v', '{}:/src'.format(app_dir),
-    # Run as the current user.
-    '-u', '{}:{}'.format(os.getuid(), os.getgid()),
+  ]
+
+  if sys.platform != 'win32':
+    # This is not portable to Windows, but also not needed.
+    args.extend([
+      # Run the Docker container as the current user, to maintain correct file
+      # permissions in the output.
+      '-u', '{}:{}'.format(os.getuid(), os.getgid()),
+    ])
+
+  args.extend([
     # Run the image we just pulled.
     SGDK_DOCKER_IMAGE,
-  ], stdout=subprocess.DEVNULL)
+  ])
+
+  subprocess.run(check=True, args=args, stdout=subprocess.DEVNULL)
 
   # Copy the output from the temporary folder to the final destination.
   shutil.copy(os.path.join(app_dir, 'out', 'rom.bin'), rom_path)
