@@ -149,9 +149,13 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
         '-background', 'black',
         '-gravity', 'center',
         '-extent', '320x224',
-        # Reduce to 15 colors (the max you can do in one palette on Sega)
-        # without dithering.
-        '+dither', '-colors', '15',
+        # Reduce color bit depth to 4 bits per channel before quantizing and
+        # computing the palette.
+        '-depth', '4',
+        # Disable dithering.
+        '+dither',
+        # Reduce to 15 colors (the max you can do in one palette on Sega).
+        '-colors', '15',
         # Output a PNG image with an 8-bit palette.
         'PNG8:{}'.format(output_path),
       ])
