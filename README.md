@@ -35,7 +35,7 @@ sudo apt -y install python3 imagemagick poppler-utils docker.io
 
 ## Windows
 
-To use this from Windows, you can install dependencies via chocolatey:
+To use this from Windows, you can install dependencies via Chocolatey:
 
 ```ps1
 choco install -y imagemagick docker docker-desktop
@@ -51,6 +51,18 @@ choco install -y poppler --version 0.89.0
 Finally, you will have to run Docker Desktop once to configure it and start the
 service.  Docker Desktop may or may not require you to reboot if it is newly
 installed.  After that, you should be able to run this tool on Windows.
+
+
+## macOS
+
+To use this from macOS, you can install dependencies via Homebrew:
+
+```sh
+brew install imagemagick poppler docker
+```
+
+Additional Docker setup may be required if you have not used Docker on you Mac
+before.
 
 
 ## Links
