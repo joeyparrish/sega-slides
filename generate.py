@@ -20,6 +20,7 @@ ROM using SGDK.  On Ubuntu, install packages "python3", "imagemagick",
 "poppler-utils", and "docker.io".
 """
 
+import argparse
 import glob
 import os
 import re
@@ -57,8 +58,24 @@ except:
   # Fallback for the older version of the imagemagick convert command.
   IMAGEMAGICK_CONVERT_BINARY = 'convert'
 
+# ImageMagick arguments for -dither
+IMAGEMAGICK_DITHER = [
+  'FloydSteinberg',
+  'Riemersma',
+]
+# ImageMagick arguments for -ordered-dither
+IMAGEMAGICK_ORDERED_DITHER = [
+  'o2x2',
+  'o3x3',
+  'o4x4',
+  'o8x8',
+  'checks',
+]
+# Acceptable command line values for --dithering
+DITHERING_CHOICES = IMAGEMAGICK_DITHER + IMAGEMAGICK_ORDERED_DITHER
 
-def main(pdf_spec, rom_path):
+
+def main(pdf_spec, rom_path, dithering_args):
   # Optional: path_to_pdf@start_page-end_page
   match = re.match(r'(.*)@(\d+)-(\d+)', pdf_spec)
   if match:
@@ -137,7 +154,7 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
     elif end_page is not None and page_num > end_page:
       pass
     else:
-      subprocess.run(check=True, args=[
+      args = [
         IMAGEMAGICK_CONVERT_BINARY,
         # Input PNG.
         page_path,
@@ -152,13 +169,16 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
         # Reduce color bit depth to 4 bits per channel before quantizing and
         # computing the palette.
         '-depth', '4',
-        # Disable dithering.
-        '+dither',
+      ]
+      # Dithering settings.
+      args.extend(dithering_args)
+      args.extend([
         # Reduce to 15 colors (the max you can do in one palette on Sega).
         '-colors', '15',
         # Output a PNG image with an 8-bit palette.
         'PNG8:{}'.format(output_path),
       ])
+      subprocess.run(check=True, args=args)
 
       resource_list.append(
           'IMAGE slide_{page_num} {page_filename} BEST'.format(
@@ -227,12 +247,40 @@ def compile_rom(app_dir, rom_path):
 
 
 if __name__ == '__main__':
-  if len(sys.argv) != 3:
-    print('Usage: {} <PDF> <ROM.BIN>'.format(sys.argv[0]))
-    print('Advanced usage: {} <PDF>@<PAGE>-<PAGE> <ROM.BIN>'.format(
-        sys.argv[0]))
-    print(__doc__)
-    sys.exit(1)
+  prog = os.path.basename(sys.argv[0])
+  description = __doc__
 
-  main(sys.argv[1], sys.argv[2])
+  parser = argparse.ArgumentParser(
+      formatter_class=argparse.RawDescriptionHelpFormatter,
+      prog=prog,
+      description=description)
+
+  parser.add_argument('slides', metavar='<SLIDES.PDF>',
+      help='PDF slides to encode.' +
+           ' Accepts optional page range in format <SLIDES.PDF>@<PAGE>-<PAGE>.')
+  parser.add_argument('rom', metavar='<ROM.BIN>',
+      help='Output ROM file.')
+  parser.add_argument('--dithering',
+      required=False,
+      nargs='?',
+      default=False,
+      choices=DITHERING_CHOICES,
+      help='Enable optional dithering.  Disabled by default.  If no method specified, --dithering is equivalent to --dithering=FloydSteinberg.')
+
+  args = parser.parse_args()
+
+  if args.dithering:
+    # Explicit dithering method.
+    if args.dithering in IMAGEMAGICK_DITHER:
+      dithering_args = ['-dither', args.dithering]
+    else:
+      dithering_args = ['-ordered-dither', args.dithering]
+  elif args.dithering is None:
+    # Dithering requested, no explicit dithering method.
+    dithering_args = ['-dither', 'FloydSteinberg']
+  else:  # using argparse default of False
+    # Dithering not requested, so disabled.
+    dithering_args = ['+dither']
+
+  main(args.slides, args.rom, dithering_args)
   sys.exit(0)

@@ -30,6 +30,13 @@ sudo apt -y install python3 imagemagick poppler-utils docker.io
 
 # A subset of pages (1-based page numbers)
 ./generate.py slides.pdf@1-21 slides.rom
+
+# With dithering, defaults to FloydSteinberg method
+./generate.py slides.pdf slides.rom --dithering
+
+# With an explicit dithering method
+./generate.py slides.pdf slides.rom --dithering o8x8
+./generate.py slides.pdf slides.rom --dithering checks
 ```
 
 
