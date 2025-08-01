@@ -166,9 +166,9 @@ def process_slides(pdf_path, pages_dir, start_page, end_page, app_dir):
         '-background', 'black',
         '-gravity', 'center',
         '-extent', '320x224',
-        # Reduce color bit depth to 4 bits per channel before quantizing and
+        # Reduce color bit depth to 3 bits per channel before quantizing and
         # computing the palette.
-        '-depth', '4',
+        '-depth', '3',
       ]
       # Dithering settings.
       args.extend(dithering_args)
