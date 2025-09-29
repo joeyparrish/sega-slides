@@ -31,7 +31,8 @@ import tempfile
 
 
 # SGDK image to compile the ROM.
-SGDK_DOCKER_IMAGE='ghcr.io/stephane-d/sgdk:latest'
+# Equivalent to the tag "v2.11" as of 2025-09-28.
+SGDK_DOCKER_IMAGE='registry.gitlab.com/doragasu/docker-sgdk@sha256:327ab838fbdf6bc741c6a7a11ee3c937cf1aaf1dc07a475995e89b741b6a830d'
 
 # The double curly braces are escaped for Python string formatting.
 SLIDES_H_TEMPLATE = '''
@@ -220,7 +221,7 @@ def compile_rom(app_dir, rom_path):
     # Remove the container when done.
     '--rm',
     # Mount the source directory into the container.
-    '-v', '{}:/src'.format(app_dir),
+    '-v', '{}:/m68k'.format(app_dir),
   ]
 
   if sys.platform != 'win32':
